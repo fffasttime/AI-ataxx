@@ -476,70 +476,14 @@ Val evalReg(Board &oboard, int col)
 	//board.print();
 	//cout<<wmid[d]*(tb.cntPieceDelta())/5.0<<' '<<wcnt[d]*board.cntPieceDelta()/5.0<<' ';
 	board.toArr(boardarr);
-	int s=0;
-	s=s*3+boardarr[0][0];
-	s=s*3+boardarr[0][1];
-	s=s*3+boardarr[0][2];
-	s=s*3+boardarr[1][0];
-	s=s*3+boardarr[1][1];
-	s=s*3+boardarr[2][0];
-	sigma+=wcor[d][s];
-	s=0;
-	s=s*3+boardarr[0][6];
-	s=s*3+boardarr[0][5];
-	s=s*3+boardarr[0][4];
-	s=s*3+boardarr[1][6];
-	s=s*3+boardarr[1][5];
-	s=s*3+boardarr[2][6];
-	sigma+=wcor[d][s];
-	s=0;
-	s=s*3+boardarr[6][0];
-	s=s*3+boardarr[6][1];
-	s=s*3+boardarr[6][2];
-	s=s*3+boardarr[5][0];
-	s=s*3+boardarr[5][1];
-	s=s*3+boardarr[4][0];
-	sigma+=wcor[d][s];
-	s=0;
-	s=s*3+boardarr[6][6];
-	s=s*3+boardarr[6][5];
-	s=s*3+boardarr[6][4];
-	s=s*3+boardarr[5][6];
-	s=s*3+boardarr[5][5];
-	s=s*3+boardarr[4][6];
-	sigma+=wcor[d][s];
-	s=0;
-	s=s*3+boardarr[0][2];
-	s=s*3+boardarr[0][3];
-	s=s*3+boardarr[0][4];
-	s=s*3+boardarr[1][2];
-	s=s*3+boardarr[1][3];
-	s=s*3+boardarr[1][4];
-	sigma+=wed[d][s];
-	s=0;
-	s=s*3+boardarr[6][2];
-	s=s*3+boardarr[6][3];
-	s=s*3+boardarr[6][4];
-	s=s*3+boardarr[5][2];
-	s=s*3+boardarr[5][3];
-	s=s*3+boardarr[5][4];
-	sigma+=wed[d][s];
-	s=0;
-	s=s*3+boardarr[2][0];
-	s=s*3+boardarr[3][0];
-	s=s*3+boardarr[4][0];
-	s=s*3+boardarr[2][1];
-	s=s*3+boardarr[3][1];
-	s=s*3+boardarr[4][1];
-	sigma+=wed[d][s];
-	s=0;          
-	s=s*3+boardarr[2][6];
-	s=s*3+boardarr[3][6];
-	s=s*3+boardarr[4][6];
-	s=s*3+boardarr[2][5];
-	s=s*3+boardarr[3][5];
-	s=s*3+boardarr[4][5];
-	sigma+=wed[d][s];
+	int s=0; s=s*3+boardarr[0][0];s=s*3+boardarr[0][1];s=s*3+boardarr[0][2];s=s*3+boardarr[1][0];s=s*3+boardarr[1][1];s=s*3+boardarr[2][0];sigma+=wcor[d][s];
+	s=0;s=s*3+boardarr[0][6];s=s*3+boardarr[0][5];s=s*3+boardarr[0][4];s=s*3+boardarr[1][6];s=s*3+boardarr[1][5];s=s*3+boardarr[2][6];sigma+=wcor[d][s];
+	s=0;s=s*3+boardarr[6][0];s=s*3+boardarr[6][1];s=s*3+boardarr[6][2];s=s*3+boardarr[5][0];s=s*3+boardarr[5][1];s=s*3+boardarr[4][0];sigma+=wcor[d][s];
+	s=0;s=s*3+boardarr[6][6];s=s*3+boardarr[6][5];s=s*3+boardarr[6][4];s=s*3+boardarr[5][6];s=s*3+boardarr[5][5];s=s*3+boardarr[4][6];sigma+=wcor[d][s];
+	s=0;s=s*3+boardarr[0][2];s=s*3+boardarr[0][3];s=s*3+boardarr[0][4];s=s*3+boardarr[1][2];s=s*3+boardarr[1][3];s=s*3+boardarr[1][4];sigma+=wed[d][s];
+	s=0;s=s*3+boardarr[6][2];s=s*3+boardarr[6][3];s=s*3+boardarr[6][4];s=s*3+boardarr[5][2];s=s*3+boardarr[5][3];s=s*3+boardarr[5][4];sigma+=wed[d][s];
+	s=0;s=s*3+boardarr[2][0];s=s*3+boardarr[3][0];s=s*3+boardarr[4][0];s=s*3+boardarr[2][1];s=s*3+boardarr[3][1];s=s*3+boardarr[4][1];sigma+=wed[d][s];
+	s=0;s=s*3+boardarr[2][6];s=s*3+boardarr[3][6];s=s*3+boardarr[4][6];s=s*3+boardarr[2][5];s=s*3+boardarr[3][5];s=s*3+boardarr[4][5];sigma+=wed[d][s];
 	//cout<<sigma<<' ';
 	//system("pause");
 	return sigma;
@@ -912,7 +856,7 @@ int chgCol(int c)
 	return 0;
 }
 
-
+#ifndef WIN_CON 
 void runOnline()
 {
 	int x0, y0, x1, y1;
@@ -927,7 +871,7 @@ void runOnline()
 	Json::Reader reader;
 	Json::Value input;
 	reader.parse(str, input);
-
+	AI::loadArgs("data/ataxxarg.txt");
 	// 分析自己收到的输入和自己过往的输出，并恢复状态
 	int turnID = input["responses"].size();
 	currBotColor = input["requests"][(Json::Value::UInt) 0]["x0"].asInt() < 0 ? 1 : -1; // 第一回合收到坐标是-1, -1，说明我是黑方
@@ -983,7 +927,7 @@ void runOnline()
 	Json::StyledWriter writer;
 	cout << writer.write(ret) << endl;
 }
-
+#endif
 
 int main()
 {
@@ -992,9 +936,8 @@ int main()
 	fout << seed << '\n';
 	debug_s << seed << ' ';
 	initMask();
-	AI::loadArgs("data/ataxxarg.txt");
 	srand(seed);
-	runOnline();
+	//runOnline();
 	logRefrsh();
 	system("pause"); //auto ignore
 	return 0;
