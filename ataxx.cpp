@@ -123,6 +123,7 @@ inline int popcount(ull x)
 #endif // USE_BUINTIN
 }
 
+//bitboard masks 
 //dis1, dis2, only dis2, available area
 ull mask1[64], mask2[64], maskj[64], maska, maskedge, maskcor;
 void initMask()
@@ -152,6 +153,7 @@ void initMask()
 		}
 }
 
+//gameboard
 struct Board
 {
 	ull m[2];
@@ -236,9 +238,11 @@ struct Board
 	ull createJump(int p, int col) const {
 		return m[col - 1] & maskj[p];
 	}
+	//player col can copy on p
 	bool canCopy(int p, int col) const {
 		return mask1[p] & m[col - 1];
 	}
+	//player col can play on p
 	bool canMove(int p, int col) const {
 		return mask2[p] & m[col - 1];
 	}
@@ -279,7 +283,7 @@ struct Board
 	}
 };
 
-//rx alpha
+//rx beta
 namespace AI
 {
 typedef double Val;
@@ -321,6 +325,7 @@ int stat, statc;
 int t0;
 
 #define nan (0.0/0.0)
+//jumping evalution, slightly improved win rate
 Val evalJump[9][9] = {
 	{ -1.16713,-0.86424,-0.13137,-0.22867,1.1016,0.88142,1.0034,1.78831,1.53666 },
 	{ -0.338552,0.433612,0.02108,0.854364,0.802064,0.496055,2.05764,1.76271,nan },
@@ -334,6 +339,8 @@ Val evalJump[9][9] = {
 
 bool outtime;
 
+//provide next branch
+//considering to make it faster
 template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 {
 	int cnt[3];
@@ -347,7 +354,7 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 	for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
 	{
 		to = first0(empty);
-		//if (board.canMove(to, col))   useless
+		//if (board.canMove(to, col))   seems useless
 		{
 			ecnt[col][to] = board.countFlips(to, col);
 			ecnt[colf][to] = board.countFlips(to, colf);
@@ -410,9 +417,7 @@ float wmid[7],wcol[7],wcnt[7],wcor[7][729],wed[7][729],wspace[7][81];
 
 void loadArgs(string filename)
 {
-	/*
-	0:30~34 1:25~29 2:20~24 3:15~19 4:10~14 5:5~9 6:2~4
-	*/
+	//sections:  0:30~34 1:25~29 2:20~24 3:15~19 4:10~14 5:5~9 6:2~4
 	ifstream finput(filename);
 	for (int k=0;k<7;k++)
 	{
@@ -424,6 +429,7 @@ void loadArgs(string filename)
 	fout<<wmid[0]<<' ';
 }
 
+//return one section
 int getTnum(int remain)
 {
 	if (remain>=30) return 0;
@@ -539,6 +545,7 @@ Val evalReg(Board &oboard, int col)
 	return sigma;
 }
 
+//get evaluation of edge struction
 Val edgeEval(Board &board, int col)
 {
 	Val ret = 0;
@@ -558,6 +565,7 @@ Val edgeEval(Board &board, int col)
 	return ret;
 }
 
+//faster minimax search
 Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 {
 	leaf_count++;
@@ -630,9 +638,8 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 			if (ret>maxc) maxc = ret;
 		}
 	}
-	if (cnt[0] == 1 && hasmove)
-	{
-
+	if (cnt[0] == 1 && hasmove){
+		//RETURN 
 	}
 	else
 	{
@@ -665,6 +672,8 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 	}
 	return maxc;
 }
+
+//general minimax search
 Val minimax(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 {
 	if (deep == maxdeep - 1)
@@ -678,18 +687,13 @@ Val minimax(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 		outtime = true;
 		return 100;
 	}
-	if (deep == maxdeep)
-	{
-		return eval(board, col)*1.0 + jumped;
-	}
+	//if (deep == maxdeep) {return eval(board, col)*1.0 + jumped;}
 	Val lyval = 0;
-	if (deep == maxdeep - 1)
-	{
-		lyval = eval(board, col) * 0.6 + jumped*0.5;
-	}
+	//if (deep == maxdeep - 1) {lyval = eval(board, col) * 0.6 + jumped*0.5;}
 	int cnt[3];
 	board.cntPiece(cnt);
-	if (cnt[1]==0 || cnt[2]==0) return eval(board, col)*1.0 + jumped;
+	if (cnt[1]==0 || cnt[2]==0) return eval(board, col)*1.0 + jumped; //midgame win
+	
 	vector<Move> v;
 	geneBranch<1>(board, col, v);
 	if (v.empty()) return evalEnd(board, col) + lyval;
@@ -712,6 +716,7 @@ Val minimax(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 	return maxc;
 }
 
+//start searching
 Move run(Board &board, int _mcol)
 {
 	//board.print();
@@ -723,14 +728,12 @@ Move run(Board &board, int _mcol)
 	fout << "AI1  col:" << _mcol << ' ' << "\n";
 	Val maxc, lastc;
 	mcol = _mcol;
+	//std::pair
 	struct Type
 	{
 		Val x;
 		Move move;
-		bool operator<(const Type &v) const
-		{
-			return x>v.x;
-		}
+		bool operator<(const Type &v) const{return x>v.x;}
 	};
 	const Val RANGE = 0.38;
 	t0 = clock();
@@ -751,552 +754,60 @@ Move run(Board &board, int _mcol)
 
 	while (clock()-t0<CLOCKS_PER_SEC*CTRL_TIME && maxdeep<35)
 	{
-	maxdeep++;
-	maxc = -100;
-	list.clear();
-	for (auto &it:v)
-	{
-	auto tboard=board; tboard.setPiece(it, mcol);
-	Val ret = -minimax(tboard, othercol(mcol), -100, 100, 0, 0);
-	if (ret > maxc) maxc = ret;
-	list.push_back({ret,it});
-	}
-	if (clock()-t0>CLOCKS_PER_SEC* MAX_TIME)
-	{
-	maxc=lastc;
-	list.clear();
-	list.insert(list.end(),lastlist.begin(),lastlist.end());
-	maxdeep--;
-	break;
-	}
-	lastc=maxc;
-	lastlist.clear();
-	lastlist.insert(lastlist.end(),list.begin(),list.end());
-
-	
-	sort(list.begin(),list.end());
-	vector<Type> probmove;
-	for (size_t i=0;i<5&&i<list.size();i++)
-	//if (it.x>maxc - RANGE)
-	probmove.push_back(list[i]);
-	/* 
-	for (auto &it : probmove)
-	{
-	it.move.print();
-	fout << ':' << it.x << "    ";
-	}
-	fout << " TTL:"<<clock()-t0<< '\n';
-	
-
-	fout<< maxdeep << " " << clock()-t0<<" "<<leaf_count << "\n";*/ 
-	}
-	//maxmove.print();
-	
-	fout << "maxd:" << maxdeep << " maxc:" << maxc << " TTL:" << clock() - t0 << " leaf:" << leaf_count << " stat:" << (float)stat / statc << '\n';
-	vector<Type> probmove;
-	for (auto &it : list)
-		if (it.x>maxc - RANGE)
-			probmove.push_back(it);
-	for (auto &it : probmove)
-	{
-		it.move.print();
-		fout << ':' << it.x << "    ";
-	}
-	fout << '\n';
-	return probmove[rand() % probmove.size()].move;
-}
-}
-
-namespace AI2
-{
-typedef double Val;
-int maxdeep;
-int mcol;
-
-Val eval(Board &board, int col)
-{
-	int cnt[3];
-	board.cntPiece(cnt);
-	if (cnt[0] == 0)
-	{
-		if (cnt[col] - cnt[othercol(col)] >= 0)
-			return cnt[col] - cnt[othercol(col)] + 32;
-		else
-			return cnt[col] - cnt[othercol(col)] - 32;
-	}
-	return cnt[col] - cnt[othercol(col)];
-}
-Val evalEnd(Board &board, int col)
-{
-	int cnt[3];
-	board.cntPieceEnd(cnt, othercol(col));
-	if (cnt[col] - cnt[othercol(col)]>0)
-		return cnt[col] - cnt[othercol(col)] + 32;
-	return cnt[col] - cnt[othercol(col)] - 32;
-}
-
-const int TX[8] = { -1,-1,-1,0,0,1,1,1 };
-const int TY[8] = { -1,0,1,-1,1,-1,0,1 };
-const int JX[16] = { -2,-2,-2,-2,-2,-1,-1,0,0,1,1,2,2,2,2,2 };
-const int JY[16] = { -2,-1,0,1,2,-2,2,-2,2,-2,2,-2,-1,0,1,2 };
-
-int leaf_count;
-int stat, statc;
-
-int t0;
-
-#define nan (0.0/0.0)
-Val evalJump[9][9] = {
-	{ -1.16713,-0.86424,-0.13137,-0.22867,1.1016,0.88142,1.0034,1.78831,1.53666 },
-	{ -0.338552,0.433612,0.02108,0.854364,0.802064,0.496055,2.05764,1.76271,nan },
-	{ 0.288602,-1.54628,0.478222,-0.00937796,0.783388,1.87763,1.83781,nan,nan },
-	{ -0.0103483,-0.556221,0.827456,0.744095,1.93756,2.46837,nan,nan,nan },
-	{ -0.867383,-1.02618,0.638031,1.61424,2.91738,nan,nan,nan,nan },
-	{ -0.0625038,-0.0291924,1.39733,3.28307,nan,nan,nan,nan,nan },
-	{ 1.34444,2.46231,2.25722,nan,nan,nan,nan,nan,nan },
-	{ 2.1,-0.973076,nan,nan,nan,nan,nan,nan,nan },
-	{ nan,nan,nan,nan,nan,nan,nan,nan,nan } };
-
-bool outtime;
-
-template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
-{
-	int cnt[3];
-	board.cntPiece(cnt);
-	vector<Move> tv[30];
-	int colf = othercol(col);
-	int ecnt[3][64];
-	int maxk = 0, max2k = 0, maxe = 0, max2e = 0;
-	statc++;
-	int to;
-	for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
-	{
-		to = first0(empty);
-		//if (board.canMove(to, col))   useless
+		maxdeep++;
+		maxc = -100;
+		list.clear();
+		for (auto &it:v)
 		{
-			ecnt[col][to] = board.countFlips(to, col);
-			ecnt[colf][to] = board.countFlips(to, colf);
-			if (ecnt[col][to])
-			{
-				if (ecnt[colf][to]>maxk) max2k = maxk, maxk = ecnt[colf][to];
-				else if (ecnt[colf][to]>max2k) max2k = ecnt[colf][to];
-			}
-			if (ecnt[colf][to])
-			{
-				if (ecnt[col][to]>maxe) max2e = maxe, maxe = ecnt[col][to];
-				else if (ecnt[col][to]>max2e) max2e = ecnt[col][to];
-			}
+			auto tboard=board; tboard.setPiece(it, mcol);
+			Val ret = -minimax(tboard, othercol(mcol), -100, 100, 0, 0);
+			if (ret > maxc) maxc = ret;
+			list.push_back({ret,it});
 		}
-	}
-	for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
-	{
-		to = first0(empty);
-		if (board.canMove(to, col))
+		if (clock()-t0>CLOCKS_PER_SEC* MAX_TIME)
 		{
-			if (maxe>1 && ecnt[col][to] == 0) continue;
-			if (cut && maxe>2 && ecnt[col][to] == 1 && ecnt[colf][to]<4) continue;
-			if (ecnt[colf][to])
-			{
-				Val te = 0;
-				if (ecnt[colf][to] == maxk) te = ecnt[col][to] - max2k*0.5;
-				else te = ecnt[col][to] - maxk*0.5;
-				tv[int(te * 2 + 10 + 0.01)].push_back({ to,49,0 });
-			}
-			if (ecnt[col][to] == 0 || (ecnt[col][to]<maxe - 1)) continue;
-			int fr;
-			for (ull jfr = board.createJump(to, col); jfr; jfr ^= 1ull << fr)
-			{
-				fr = first0(jfr);
-				//board.print();
-				Board tboard = board;
-				tboard.setPiece(to, fr, col);
-				int cr = tboard.countFlips(fr, col), cc = tboard.countFlips(fr, colf);
-				if (cc && cr<4 && (ecnt[col][to]<maxe)) continue;
-				Val te = 0;
-				if (cr && cc>maxk) te = ecnt[col][to] - cc*0.5;
-				else if (ecnt[colf][to] == maxk) te = ecnt[col][to] - max2k*0.5;
-				else te = ecnt[col][to] - maxk*0.5;
-				tv[int(te * 2 + 10 - 1.8 + 0.01)].push_back({ to, fr, 1 });
-			}
-		}
-	}
-	int maxv = -1;
-	for (int i = 29;i >= 0;i--)
-		if (!tv[i].empty())
-		{
-			if (maxv == -1) maxv = i;
-			if (cut && cnt[0]>9 && i<maxv - 5) break;
-			v.insert(v.end(), tv[i].begin(), tv[i].end());
-		}
-	stat += v.size();
-}
-
-Val edgeEval(Board &board, int col)
-{
-	Val ret = 0;
-	int pos;
-	for (ull bpos = (board.m[0] | board.m[1]) & maskedge; bpos; bpos ^= 1ull << pos)
-	{
-		pos = first0(bpos);
-		int te = board.countNearSpaces(pos);
-		Val cr;
-		if (te == 0) cr = 0.4;
-		else if (te == 1) cr = 0.08;
-		else cr = 0.12;
-		if (maskcor & (1ull<<pos)) cr*=1.5;
-		if (board.getCol(pos) == col) ret += cr;
-		else ret -= cr;
-	}
-	return ret;
-}
-
-Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
-{
-	leaf_count++;
-	if (outtime) return 100;
-	if (leaf_count % 2000 == 0 && clock() - t0>CLOCKS_PER_SEC * MAX_TIME)
-	{
-		outtime = true;
-		return 100;
-	}
-	if (deep == maxdeep)
-	{
-		return eval(board, col)*1.0 + jumped;
-	}
-	Val lyval = 0;
-	int cnt[3];
-	board.cntPiece(cnt);
-	if (deep == maxdeep - 1)
-	{
-		lyval += eval(board, col) * 0.6 + jumped*0.5;
-		if (cnt[0]>4 && cnt[0]<42)
-			lyval += edgeEval(board, col);
-	}
-	if (cnt[1]==0 || cnt[2]==0) return eval(board, col)*1.0 + jumped;
-	int maxe = 0;
-	bool hasmove = false;
-	Val maxc = -100;
-	int to;
-	for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
-	{
-		to = first0(empty);
-		if (board.canCopy(to, col))
-		{
-			int te = board.countFlips(to, col);
-			if (te>maxe) maxe = te;
-		}
-	}
-	for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
-	{
-		to = first0(empty);
-		if (board.canCopy(to, col))
-		{
-			int te = board.countFlips(to, col);
-			if (maxe>1 && te == 0) continue;
-			if (maxe>2 && te == 1) continue;
-			Board tboard = board;
-			tboard.setPiece(to, col);
-			Val ret = -minimax1(tboard, othercol(col), -beta, -alpha, deep + 1, 0) + lyval;
-			if (ret >= beta) return beta;
-			if (ret >= alpha) alpha = ret;
-			hasmove = true;
-			if (ret>maxc) maxc = ret;
-		}
-	}
-	if (cnt[0] == 1 && hasmove)
-	{
-
-	}
-	else
-	{
-		for (ull empty = board.createEmpty(); empty; empty ^= 1ull << to)
-		{
-			to = first0(empty);
-			int te = board.countFlips(to, col);
-			if (te == 0 || te<maxe - (cnt[0]<7)) continue;
-			int fr;
-			for (ull jfr = board.createJump(to, col); jfr; jfr ^= 1ull << fr)
-			{
-				fr = first0(jfr);
-				//board.print();
-				Board tboard = board;
-				tboard.setPiece(to, fr, col);
-				int cr = tboard.countFlips(fr, col), cc = tboard.countFlips(fr, othercol(col));
-				Val cJump = evalJump[cr][cc] + 0.2;
-				if (cnt[0]<5) cJump = 1.4;
-				Val ret = -minimax1(tboard, othercol(col), -beta, -alpha, deep + 1, cJump) + lyval;
-				if (ret >= beta) return beta;
-				if (ret >= alpha) alpha = ret;
-				hasmove = true;
-				if (ret>maxc) maxc = ret;
-			}
-		}
-	}
-	if (!hasmove)
-	{
-		return evalEnd(board, col) + lyval;
-	}
-	return maxc;
-}
-Val minimax(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
-{
-	if (deep == maxdeep - 1)
-	{
-		return minimax1(board, col, alpha, beta, deep, jumped);
-	}
-	leaf_count++;
-	if (outtime) return 100;
-	if (leaf_count % 300 == 0 && clock() - t0>CLOCKS_PER_SEC * MAX_TIME)
-	{
-		outtime = true;
-		return 100;
-	}
-	if (deep == maxdeep)
-	{
-		return eval(board, col)*1.0 + jumped;
-	}
-	Val lyval = 0;
-	if (deep == maxdeep - 1)
-	{
-		lyval = eval(board, col) * 0.6 + jumped*0.5;
-	}
-	int cnt[3];
-	board.cntPiece(cnt);
-	if (cnt[1]==0 || cnt[2]==0) return eval(board, col)*1.0 + jumped;
-	vector<Move> v;
-	geneBranch<1>(board, col, v);
-	if (v.empty()) return evalEnd(board, col) + lyval;
-	Val maxc = -100;
-	for (auto &it : v)
-	{
-		auto tboard = board; tboard.setPiece(it, col);
-		Val cJump = 0;
-		if (it.jump)
-		{
-			int cr = tboard.countFlips(it.fr, col), cc = tboard.countFlips(it.fr, othercol(col));
-			cJump = evalJump[cr][cc] + 0.2;
-			if (cnt[0]<5) cJump = 1.4;
-		}
-		Val ret = -minimax(tboard, othercol(col), -beta, -alpha, deep + 1, cJump) + lyval;
-		if (ret >= beta) return beta;
-		if (ret >= alpha) alpha = ret;
-		if (ret > maxc) maxc = ret;
-	}
-	return maxc;
-}
-
-Move run(Board &board, int _mcol)
-{
-	//board.print();
-	leaf_count = 0;
-	outtime = false;
-	int cnt[3];
-	board.cntPiece(cnt);
-	fout << "AI1  col:" << _mcol << ' ' << "\n";
-	Val maxc, lastc;
-	mcol = _mcol;
-	struct Type
-	{
-		Val x;
-		Move move;
-		bool operator<(const Type &v) const
-		{
-			return x>v.x;
-		}
-	};
-	const Val RANGE = 0.38;
-	t0 = clock();
-	vector<Type> list, lastlist;
-	vector<Move> v;
-	geneBranch<0>(board, mcol, v);
-	for (auto &it : v)
-	{
-		maxdeep = 4;
-		auto tboard = board; tboard.setPiece(it, mcol);
-		Val ret = -minimax(tboard, othercol(mcol), -100, 100, 0, 0);
-		list.push_back({ ret,it });
-	}
-	sort(list.begin(), list.end());
-	while (list.size()>((cnt[0]<7) ? 12 : 6)) list.pop_back();
-	v.clear();
-	for (auto &it : list) v.push_back(it.move);
-
-	while (clock()-t0<CLOCKS_PER_SEC*CTRL_TIME && maxdeep<35)
-	{
-	maxdeep++;
-	maxc = -100;
-	list.clear();
-	for (auto &it:v)
-	{
-	auto tboard=board; tboard.setPiece(it, mcol);
-	Val ret = -minimax(tboard, othercol(mcol), -100, 100, 0, 0);
-	if (ret > maxc) maxc = ret;
-	list.push_back({ret,it});
-	}
-	if (clock()-t0>CLOCKS_PER_SEC* MAX_TIME)
-	{
-	maxc=lastc;
-	list.clear();
-	list.insert(list.end(),lastlist.begin(),lastlist.end());
-	maxdeep--;
-	break;
-	}
-	lastc=maxc;
-	lastlist.clear();
-	lastlist.insert(lastlist.end(),list.begin(),list.end());
-
-	
-	sort(list.begin(),list.end());
-	vector<Type> probmove;
-	for (size_t i=0;i<5&&i<list.size();i++)
-	//if (it.x>maxc - RANGE)
-	probmove.push_back(list[i]);
-	for (auto &it : probmove)
-	{
-	it.move.print();
-	fout << ':' << it.x << "    ";
-	}
-	fout << " TTL:"<<clock()-t0<< '\n';
-	
-
-	fout<< maxdeep << " " << clock()-t0<<" "<<leaf_count << "\n";
-	}
-	//maxmove.print();
-	
-	fout << "maxd:" << maxdeep << " maxc:" << maxc << " TTL:" << clock() - t0 << " leaf:" << leaf_count << " stat:" << (float)stat / statc << '\n';
-	vector<Type> probmove;
-	for (auto &it : list)
-		if (it.x>maxc - RANGE)
-			probmove.push_back(it);
-	for (auto &it : probmove)
-	{
-		it.move.print();
-		fout << ':' << it.x << "    ";
-	}
-	fout << '\n';
-	return probmove[rand() % probmove.size()].move;
-}
-}
-
-void print(const Board &board)
-{
-	printf("╔"); for (int i = 1; i < M_SIZE; i++) printf("═╦"); printf("═╗\n");
-	for (int i = 0; i < M_SIZE; i++)
-	{
-		printf("║");
-		for (int j = 0; j < M_SIZE; j++)
-		{
-			if (board.getCol(i, j) == PIECE_WHITE) printf("●");
-			else if (board.getCol(i, j) == PIECE_BLACK) printf("○");
-			else printf("  ");
-			printf("║");
-		}
-		printf("\n");
-		if (i < M_SIZE - 1)
-		{
-			printf("╠");
-			for (int j = 0; j < M_SIZE - 1; j++) printf("═╬"); printf("═╣");
-		}
-		else
-		{
-			printf("╚");
-			for (int j = 0; j < M_SIZE - 1; j++) printf("═╩"); printf("═╝");
-		}
-		printf("\n");
-	}
-	for (int i = 0; i < M_SIZE; i++)
-	{
-		for (int j = 0; j < M_SIZE; j++)
-			if (board.getCol(i, j) == PIECE_WHITE) fout << "○";
-			else if (board.getCol(i, j) == PIECE_BLACK) fout << "●";
-			else fout << "·";
-			fout << '\n';
-	}
-}
-
-#ifdef WIN_CON
-HANDLE hOut, hIn;
-
-void init()
-{
-	HANDLE consolehwnd;
-	consolehwnd = GetStdHandle(STD_OUTPUT_HANDLE);
-	//SetConsoleTextAttribute(consolehwnd, 127 + 128 - 15);
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	hIn = GetStdHandle(STD_INPUT_HANDLE);
-}
-
-void gotoXY(short x, short y)
-{
-	SetConsoleCursorPosition(hOut, { x, y });
-}
-//*
-int orgBoard[7][7] = {
-	{ 2,0,0,0,0,0,1 },
-	{ 0,0,0,0,0,0,0 },
-	{ 0,0,0,0,0,0,0 },
-	{ 0,0,0,0,0,0,0 },
-	{ 0,0,0,0,0,0,0 },
-	{ 0,0,0,0,0,0,0 },
-	{ 1,0,0,0,0,0,2 } };
-//*/
-/*
-Board orgBoard = { {
-{ 1,1,1,1,1,1,1 },
-{ 1,2,1,0,1,0,1 },
-{ 1,1,1,1,1,1,1 },
-{ 1,0,1,0,1,0,1 },
-{ 1,1,1,1,1,1,1 },
-{ 1,0,1,0,1,0,1 },
-{ 1,1,1,1,1,1,1 } } };
-//*/
-
-int FIRST_MOVE = PIECE_BLACK;
-int cnt[3];
-int gcnt[64][3];
-
-void runGame()
-{
-	init();
-	Board board;
-	board.set(orgBoard);
-	print(board);
-	board.cntPiece(cnt);
-	printf("White:%2d   Black:%2d", cnt[PIECE_WHITE], cnt[PIECE_BLACK]);
-	//system("pause");
-	//int nowcol = PIECE_BLACK;
-	int nowcol = FIRST_MOVE;
-	while (1)
-	{
-		Move dec;
-		if (nowcol == PIECE_WHITE)
-			dec = AI::run(board, nowcol);
-		else
-			dec = AI2::run(board, nowcol);
-		//AI::run(board, nowcol);
-		board.setPiece(dec, nowcol);
-		//Sleep(500);
-		gotoXY(0, 0);
-		print(board);
-		logRefrsh();
-		board.cntPiece(cnt);
-		printf("White:%2d   Black:%2d", cnt[PIECE_WHITE], cnt[PIECE_BLACK]);
-		fout << "White:" << cnt[PIECE_WHITE] << "   Black:" << cnt[PIECE_BLACK] << '\n';
-		gcnt[49 - cnt[0]][PIECE_WHITE] += cnt[PIECE_WHITE]; gcnt[49 - cnt[0]][PIECE_BLACK] += cnt[PIECE_BLACK];
-		gcnt[49 - cnt[0]][0]++;
-		if (!board.hasMove(othercol(nowcol)))
+			maxc=lastc;
+			list.clear();
+			list.insert(list.end(),lastlist.begin(),lastlist.end());
+			maxdeep--;
 			break;
-		nowcol = othercol(nowcol);
+		}
+		lastc=maxc;
+		lastlist.clear();
+		lastlist.insert(lastlist.end(),list.begin(),list.end());
+	
+		sort(list.begin(),list.end());
+		vector<Type> probmove;
+		for (size_t i=0;i<5&&i<list.size();i++)
+			//if (it.x>maxc - RANGE)
+			probmove.push_back(list[i]);
+		/* 
+		for (auto &it : probmove)
+		{
+		it.move.print();
+		fout << ':' << it.x << "    ";
+		}
+		fout << " TTL:"<<clock()-t0<< '\n';
+		
+	
+		fout<< maxdeep << " " << clock()-t0<<" "<<leaf_count << "\n";*/ 
 	}
-	gotoXY(0, 0);
-	print(board);
-	logRefrsh();
-	board.cntPieceEnd(cnt, nowcol);
-	fout << "White:" << cnt[PIECE_WHITE] << "   Black:" << cnt[PIECE_BLACK] << '\n';
-	printf("White:%2d   Black:%2d", cnt[PIECE_WHITE], cnt[PIECE_BLACK]);
+	//maxmove.print();
+	
+	fout << "maxd:" << maxdeep << " maxc:" << maxc << " TTL:" << clock() - t0 << " leaf:" << leaf_count << " stat:" << (float)stat / statc << '\n';
+	vector<Type> probmove;
+	for (auto &it : list)
+		if (it.x>maxc - RANGE)
+			probmove.push_back(it);
+	for (auto &it : probmove)
+	{
+		it.move.print();
+		fout << ':' << it.x << "    ";
+	}
+	fout << '\n';
+	return probmove[rand() % probmove.size()].move;
 }
-
-#endif
+}
 
 int currBotColor; // 我所执子颜色（1为黑，-1为白，棋盘状态亦同）
 int gridInfo[7][7] = { 0 }; // 先x后y，记录棋盘状态
@@ -1473,53 +984,6 @@ void runOnline()
 	cout << writer.write(ret) << endl;
 }
 
-#ifdef WIN_CON
-
-void tests()
-{
-	ofstream result("result.log");
-	const int tc = 100;
-	int cb = 0;
-	float avgcw = 0, avgcb = 0;
-	for (int i = 0;i<tc / 2;i++)
-	{
-		runGame();
-		result << "White:" << cnt[PIECE_WHITE] << "   Black:" << cnt[PIECE_BLACK] << '\n';
-		if (cnt[PIECE_BLACK]>24) cb++;
-		avgcw += cnt[PIECE_WHITE]; avgcb += cnt[PIECE_BLACK];
-		result.flush();
-	}
-	result << cb << '\n';
-
-	for (int i = 4;i <= 49;i++)
-		result << "number:" << i << "  w:" << (float)gcnt[i][PIECE_WHITE] / gcnt[i][0] << " b:" << (float)gcnt[i][PIECE_BLACK] / gcnt[i][0] << '\n';
-	result << '\n';
-
-	FIRST_MOVE = PIECE_WHITE;
-	for (int i = 0;i<tc / 2;i++)
-	{
-		runGame();
-		result << "White:" << cnt[PIECE_WHITE] << "   Black:" << cnt[PIECE_BLACK] << '\n';
-		if (cnt[PIECE_BLACK]>24) cb++;
-		avgcw += cnt[PIECE_WHITE]; avgcb += cnt[PIECE_BLACK];
-		result.flush();
-	}
-	result << cb << '\n';
-	avgcw /= tc; avgcb /= tc;
-	result << "avg w:" << avgcw << " avg b:" << avgcb << '\n';
-	for (int i = 4;i <= 49;i++)
-		result << "number:" << i << "  w:" << (float)gcnt[i][PIECE_WHITE] / gcnt[i][0] << " b:" << (float)gcnt[i][PIECE_BLACK] / gcnt[i][0] << '\n';
-}
-
-void runCon()
-{
-	init();
-	tests();
-	//FIRST_MOVE=PIECE_WHITE;
-	//runGame();
-}
-
-#endif
 
 int main()
 {
@@ -1531,10 +995,8 @@ int main()
 	AI::loadArgs("data/ataxxarg.txt");
 	srand(seed);
 	runOnline();
-	//runCon();
 	logRefrsh();
-	system("pause");
+	system("pause"); //auto ignore
 	return 0;
 }
-
 
