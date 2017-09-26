@@ -1,7 +1,7 @@
 from loadataxxdata import ataxxdata
-import tensorflow as tf
 datas = ataxxdata("ataxxdata2_4ne_.txt")
 valids = ataxxdata("2_va.txt")
+import tensorflow as tf
 sess = tf.InteractiveSession()
 
 def weight_variable(shape):
@@ -60,12 +60,10 @@ for i in range(10000):
     batch = datas.next_batch(100)
     if i%100 == 0:
 
-        valid_loss = acc.eval(feed_dict={x:valids.data[1], x_col:valids.data[0], y_: valids.data[2]})
+        valid_loss = l1_eps.eval(feed_dict={x:valids.data[1], x_col:valids.data[0], y_: valids.data[2]})
         print("step %d, valid loss %g"%(i, valid_loss))
         
         train_loss = l1_eps.eval(feed_dict={x:batch[1], x_col:batch[0], y_: batch[2]})
         print("step %d, train loss %g"%(i, train_loss))
     
     train_step.run(feed_dict={x:batch[1], x_col:batch[0], y_: batch[2]})
-
-
