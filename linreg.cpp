@@ -130,6 +130,12 @@ struct Board
 	int getColF(int p) const {
 		return ((m[0]>>p) & 1ull)*2 + ((m[1]>>p) & 1ull);
 	}
+	void print()
+	{
+		for (int i=0;i<7;i++,cout<<'\n')
+			for (int j=0;j<7;j++)
+				cout<<getCol(i,j)<<' ';
+	}
 	int getCol(int x, int y) const {
 		return getCol(xyToP(x, y));
 	}
@@ -143,7 +149,8 @@ struct Board
 	{
 		for (int i = 0;i<7;i++)
 			for (int j = 0;j<7;j++)
-				setCol(i, j, _m[i][j]);
+				if (_m[i][j])
+					setCol(i, j, _m[i][j]);
 	}
 	void setPiece(int p, int col)
 	{
@@ -166,7 +173,7 @@ struct Board
 	{
 		return popcount(m[(col - 1)] & mask1[p]);
 	}
-	int countDis12(int p, int col) const
+	int countDis2(int p, int col) const
 	{
 		return popcount(m[(col - 1)] & mask2[p]);
 	}
@@ -265,51 +272,106 @@ Board board[max_size];
 int mcol[max_size],batch_size=200;
 float mval[max_size];
 
-float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4];
-float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4];
+float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4],wcol;
+float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4],rwcol;
 
 float sse=0;
-/*
-void printb(int num)
+
+void printb(int mm[7][7])
 {
 	for (int i=0;i<7;i++,cout<<'\n')
 		for (int j=0;j<7;j++)
-			cout<<mm[num][i][j]<<' ';
+			cout<<mm[i][j]<<' ';
 }
-*/
+
 float ssig=0;
 
 void updateArg()
 {
 	float ee=le/batch_size;
 	for (int i=0;i<3*4*4*6*6;i++) 
-		w1[i]+=rw1[i]*ee;
+		w1[i]+=rw1[i]*ee,rw1[i]=0;
 	for (int i=0;i<3*6*6*5*5;i++) 
-		w2[i]+=rw2[i]*ee;
+		w2[i]+=rw2[i]*ee,rw2[i]=0;
 	for (int i=0;i<3*6*6*6*6;i++) 
-		w3[i]+=rw3[i]*ee;
+		w3[i]+=rw3[i]*ee,rw3[i]=0;
 	for (int i=0;i<3*9*9*4*4;i++) 
-		w4[i]+=rw4[i]*ee;
+		w4[i]+=rw4[i]*ee,rw4[i]=0;
 	for (int i=0;i<3*9*9*4*4;i++) 
-		w5[i]+=rw5[i]*ee;
+		w5[i]+=rw5[i]*ee,rw5[i]=0;
 	for (int i=0;i<3*9*9*4*4;i++) 
-		w6[i]+=rw6[i]*ee;
+		w6[i]+=rw6[i]*ee,rw6[i]=0;
 	for (int i=0;i<3*9*9*4*4;i++) 
-		w7[i]+=rw7[i]*ee;
+		w7[i]+=rw7[i]*ee,rw7[i]=0;
+	wcol+=rwcol; rwcol=0;
 }
 
 int d1[4], d2[8], d3[12], d4[4], d5[12], d6[4], d7[5];
 
-int r0,r1,r2,r3,r4;
-void getcc(int num)
+int gnum,r0,r1,r2,r3,r4;
+void getcc1(int p)
 {
-	r0=board[num].getCol(p);
-	r1=board[num].countDis1(p,1);
-	r2=board[num].countDis1(p,2);
-	r3=board[num].countDis2(p,1)-r1;
-	r4=board[num].countDis2(p,2)-r2;
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
 }
 
+void getcc2(int p)
+{
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
+	if (r3>1) r3--; if (r3==5) r3--;
+	if (r4>1) r4--; if (r4==5) r4--; 
+}
+
+void getcc3(int p)
+{
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
+	r3=(r3+2)/3; 
+	r4=(r4+2)/3;
+}
+
+void getcc4(int p)
+{
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
+	r3/=2; 
+	r4/=2;
+}
+
+void getcc5(int p)
+{
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
+	r3=(r3+3)/4; 
+	r4=(r4+3)/4;
+}
+
+void getcc6(int p)
+{
+	r0=board[gnum].getCol(p);
+	r1=board[gnum].countDis1(p,1);
+	r2=board[gnum].countDis1(p,2);
+	r3=board[gnum].countDis2(p,1)-r1;
+	r4=board[gnum].countDis2(p,2)-r2;
+	r3/=4; if (r3==4) r4--;
+	r4/=4; if (r3==4) r4--;
+}
 /*
 0  1  2  3  4  5  6
 8  9  10 11 12 13 14
@@ -329,112 +391,113 @@ void getcc(int num)
 2 4 5 5 5 4 2
 1 2 3 3 3 2 1
 */
-void getnumbers(int num, int p)
+void getnumbers(int num)
 {
+	gnum=num;
 	int t;
-	getcc(0); t=r4+r3*6+r2*36+r1*144+r0*576;
+	getcc1(0); t=r4+r3*6+r2*36+r1*144+r0*576;
 	d1[0]=t;
-	getcc(6); t=r4+r3*6+r2*36+r1*144+r0*576;
+	getcc1(6); t=r4+r3*6+r2*36+r1*144+r0*576;
 	d1[1]=t;
-	getcc(48); t=r4+r3*6+r2*36+r1*144+r0*576;
+	getcc1(48); t=r4+r3*6+r2*36+r1*144+r0*576;
 	d1[2]=t;
-	getcc(54); t=r4+r3*6+r2*36+r1*144+r0*576;
+	getcc1(54); t=r4+r3*6+r2*36+r1*144+r0*576;
 	d1[3]=t;
 	
-	getcc(1); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(1); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[0]=t;
-	getcc(5); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(5); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[1]=t;
-	getcc(8); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(8); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[2]=t;
-	getcc(14); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(14); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[3]=t;
-	getcc(40); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(40); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[4]=t;
-	getcc(46); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(46); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[5]=t;
-	getcc(49); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(49); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[6]=t;
-	getcc(53); t=r4+r3*5+r2*25+r1*150+r0*900;
+	getcc2(53); t=r4+r3*5+r2*25+r1*150+r0*900;
 	d2[7]=t;
 	
-	getcc(2); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(2); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[0]=t;
-	getcc(3); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(3); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[1]=t;
-	getcc(4); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(4); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[2]=t;
-	getcc(50); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(50); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[3]=t;
-	getcc(51); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(51); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[4]=t;
-	getcc(52); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(52); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[5]=t;
-	getcc(16); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(16); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[6]=t;
-	getcc(24); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(24); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[7]=t;
-	getcc(32); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(32); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[8]=t;
-	getcc(22); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(22); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[9]=t;
-	getcc(30); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(30); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[10]=t;
-	getcc(38); t=r4+r3*6+r2*36+r1*216+r0*1296;
+	getcc3(38); t=r4+r3*6+r2*36+r1*216+r0*1296;
 	d3[11]=t;
 	
-	getcc(9); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc4(9); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d4[0]=t;
-	getcc(13); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc4(13); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d4[1]=t;
-	getcc(41); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc4(41); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d4[2]=t;
-	getcc(45); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc4(45); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d4[3]=t;
 	
-	getcc(10); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(10); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[0]=t;
-	getcc(11); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(11); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[1]=t;
-	getcc(12); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(12); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[5]=t;
-	getcc(42); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(42); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[3]=t;
-	getcc(43); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(43); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[4]=t;
-	getcc(44); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(44); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[5]=t;
-	getcc(17); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(17); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[6]=t;
-	getcc(25); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(25); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[7]=t;
-	getcc(33); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(33); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[8]=t;
-	getcc(21); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(21); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[9]=t;
-	getcc(29); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(29); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[10]=t;
-	getcc(37); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc5(37); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d5[11]=t;
 	
-	getcc(18); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(18); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d6[0]=t;
-	getcc(20); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(20); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d6[1]=t;
-	getcc(34); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(34); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d6[2]=t;
-	getcc(36); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(36); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d6[3]=t;
 	
-	getcc(19); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(19); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d7[0]=t;
-	getcc(26); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(26); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d7[1]=t;
-	getcc(27); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(27); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d7[2]=t;
-	getcc(28); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(28); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d7[3]=t;
-	getcc(35); t=r4+r3*4+r2*16+r1*144+r0*1296;
+	getcc6(35); t=r4+r3*4+r2*16+r1*144+r0*1296;
 	d7[4]=t;
 }
 
@@ -457,6 +520,9 @@ void valid(int num)
 		sigma+=w2[d2[i]];
 	for (int i=0;i<5;i++)
 		sigma+=w7[d7[i]];
+		
+	if (mcol[num]==1) sigma+=wcol;
+	
 	ssig+=sigma;
 	
 	float mse=fabs(sigma-mval[num]);
@@ -465,6 +531,7 @@ void valid(int num)
 
 void accuGrad(int num)
 {
+	//board[num].print();
 	getnumbers(num);
 	float sigma=0;
 	for (int i=0;i<4;i++)
@@ -483,6 +550,8 @@ void accuGrad(int num)
 	for (int i=0;i<5;i++)
 		sigma+=w7[d7[i]];
 		
+	if (mcol[num]==1) sigma+=wcol;
+	
 	float mse=(sigma-mval[num])*(sigma-mval[num])/2, delta=mval[num]-sigma;
 	sse+=fabs(delta);
 	
@@ -501,11 +570,20 @@ void accuGrad(int num)
 		rw2[d2[i]]+=delta;
 	for (int i=0;i<5;i++)
 		rw7[d7[i]]+=delta;
+		
+	if (mcol[num]==1) rwcol+=delta/100;
+	/*
+	if (fabs(rw1[1038]+90.7)<0.1)
+	{
+		board[num].print();
+		cout<<num;
+		system("pause");
+	}*/
 }
 
 void saveArgs()
 {
-	ofstream foutp("trained35_39.txt");
+	ofstream foutp("trained2_4.txt");
 	for (int i=0;i<3*4*4*6*6;i++) foutp<<w1[i]<<' ';
 	foutp<<'\n';
 	for (int i=0;i<3*6*6*5*5;i++) foutp<<w2[i]<<' ';
@@ -526,7 +604,8 @@ int mm[7][7];
 
 int main()
 { 
-	ifstream fin("ataxxdata35_39.txt");
+	initMask();
+	ifstream fin("ataxxdata30_34.txt");
 	int col;
 	while (fin>>col)
 	{
@@ -539,14 +618,15 @@ int main()
 					if (mm[i][j]!=0)
 						mm[i][j]=mm[i][j]%2+1;
 			} 
+		board[ccnt].clear();
 		board[ccnt].set(mm);
 		fin>>mval[ccnt];
-		//if (mcol[ccnt]==1) mval[ccnt]=-mval[ccnt];
+		if (mcol[ccnt]==1) mval[ccnt]=-mval[ccnt];
 		//mval[ccnt]-=5.4;
 		ccnt++;
 	}
 	cout<<ccnt<<" board loaded\n";
-	ccnt=80000;
+	ccnt=60000;
 	for (int i=0;i<40000;i++) 
 	{
 		for (int j=0;j<batch_size;j++)
@@ -561,7 +641,6 @@ int main()
 	//cout<<"wcol:"<<wcol<<"\nwmid:"<<wmid<<"\n";
 	float vy_=0;
 	for (int i=ccnt;i<ccnt+1000;i++)
-	
 	{
 		valid(i);
 		if (i%200==199)
