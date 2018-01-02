@@ -11,6 +11,8 @@
 #include <queue>
 using namespace std;
 
+#define M_SIZE 7
+
 bool inBorder(int x, int y)
 {
 	return (x >= 0 && x< M_SIZE && y >= 0 && y< M_SIZE);
@@ -21,7 +23,6 @@ int othercol(int col)
 {
 	if (col == 2) return 1;
 	if (col == 1) return 2;
-	ASSERT(col != 0);
 	return 0;
 }
 
@@ -33,9 +34,9 @@ struct Move
 	void print()
 	{
 		int x = to / 8, y = to % 8, fx = fr / 8, fy = fr % 8;
-		fout << '<' << x << ',' << y;
-		if (jump) fout << ',' << fx << ',' << fy;
-		fout << '>';
+		//fout << '<' << x << ',' << y;
+		//if (jump) fout << ',' << fx << ',' << fy;
+		//fout << '>';
 	}
 };
 
@@ -161,6 +162,14 @@ struct Board
 	{
 		return popcount(m[(col - 1)^1] & mask1[p]);
 	}
+	int countDis1(int p, int col) const
+	{
+		return popcount(m[(col - 1)] & mask1[p]);
+	}
+	int countDis12(int p, int col) const
+	{
+		return popcount(m[(col - 1)] & mask2[p]);
+	}
 	void cntPiece(int cnt[3])
 	{
 		cnt[1] = popcount(m[0]);
@@ -252,116 +261,53 @@ const int max_size=160000;
 const float le=0.01;
 
 int ccnt;
-int mm[max_size][7][7],mcol[max_size],batch_size=200;
+Board board[max_size]; 
+int mcol[max_size],batch_size=200;
 float mval[max_size];
 
-float w1[2*4*4*6*6], w2[2*6*6*5*5], w3[2*6*6*6*6],w4[2*9*9*4*4], w5[2*9*9*4*4], w6[2*9*9*4*4], w7[2*9*9*4*4];
-float rw1[2*4*4*6*6], rw2[2*6*6*5*5], rw3[2*6*6*6*6],rw4[2*9*9*4*4], rw5[2*9*9*4*4], rw6[2*9*9*4*4], rw7[2*9*9*4*4];
+float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4];
+float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4];
 
 float sse=0;
-
+/*
 void printb(int num)
 {
 	for (int i=0;i<7;i++,cout<<'\n')
 		for (int j=0;j<7;j++)
 			cout<<mm[num][i][j]<<' ';
 }
-
+*/
 float ssig=0;
-
-void valid(int num)
-{
-	int ptnCor[4][6], ptnEdge[4][6];
-	getptns(num,ptnCor, ptnEdge);
-	int pc[4],pe[4];
-	for (int i=0;i<4;i++)
-	{
-		pc[i]=ptnhash(ptnCor[i]);
-		pe[i]=ptnhash(ptnEdge[i]);
-	}
-	float cmid=getpmid(num)/5.0;
-	float ccnt=getccnt(num)/5.0;
-	float sigma=0;
-	
-	
-	for (int i=1;i<6;i++)
-		for (int j=1;j<6;j++)
-			if (mm[num][i][j]==0)
-			{
-				int v=getSpace(num,i,j);
-				sigma+=wspace[v];
-			}
-	
-	for (int i=1;i<6;i++)
-	{
-		if (mm[num][0][i]==0)
-		{
-			int v=getESpace(num,0,i);
-			sigma+=wedsp[v];
-		}
-		if (mm[num][6][i]==0)
-		{
-			int v=getESpace(num,6,i);
-			sigma+=wedsp[v];
-		}
-		if (mm[num][i][0]==0)
-		{
-			int v=getESpace(num,i,0);
-			sigma+=wedsp[v];
-		}
-		if (mm[num][i][6]==0)
-		{
-			int v=getESpace(num,i,6);
-			sigma+=wedsp[v];
-		}
-	}
-	
-	for (int i=0;i<4;i++)
-	{
-		sigma+=wcor[pc[i]]+wed[pe[i]];
-	}
-	sigma+=wmid*cmid;
-	sigma+=wcnt*ccnt;
-	if (mcol[num]==1) sigma+=wcol;
-	ssig+=sigma;
-	
-	float mse=fabs(sigma-mval[num]);
-	sse+=mse;
-}
 
 void updateArg()
 {
 	float ee=le/batch_size;
-	for (int i=0;i<729;i++)
-	{
-		wcor[i]+=rwcor[i]*ee;
-		wed[i]+=rwed[i]*ee;
-	}
-	for (int i=0;i<81;i++)
-		wspace[i]+=rwspace[i]*ee;
-	for (int i=0;i<36;i++)
-		wedsp[i]+=rwedsp[i]*ee;
-	wmid+=rwmid*ee;
-	wcol+=rwcol*ee;
-	wcnt+=rwcnt*ee;
-	for (int i=0;i<729;i++)
-		rwcor[i]=rwed[i]=0;
-	for (int i=0;i<81;i++)
-		rwspace[i]=0;
-	for (int i=0;i<36;i++)
-		rwedsp[i]=0;
-	rwmid=rwcol=rwcnt=0;
+	for (int i=0;i<3*4*4*6*6;i++) 
+		w1[i]+=rw1[i]*ee;
+	for (int i=0;i<3*6*6*5*5;i++) 
+		w2[i]+=rw2[i]*ee;
+	for (int i=0;i<3*6*6*6*6;i++) 
+		w3[i]+=rw3[i]*ee;
+	for (int i=0;i<3*9*9*4*4;i++) 
+		w4[i]+=rw4[i]*ee;
+	for (int i=0;i<3*9*9*4*4;i++) 
+		w5[i]+=rw5[i]*ee;
+	for (int i=0;i<3*9*9*4*4;i++) 
+		w6[i]+=rw6[i]*ee;
+	for (int i=0;i<3*9*9*4*4;i++) 
+		w7[i]+=rw7[i]*ee;
 }
 
 int d1[4], d2[8], d3[12], d4[4], d5[12], d6[4], d7[5];
 
 int r0,r1,r2,r3,r4;
-void getcc(int num, int pos, int &r0, int &r1, int &r2, int &r3, int &r4)
+void getcc(int num)
 {
-	r0=board[pos];
-	r1=board[dis1]
-	r1=board[dis1];
-	//etc
+	r0=board[num].getCol(p);
+	r1=board[num].countDis1(p,1);
+	r2=board[num].countDis1(p,2);
+	r3=board[num].countDis2(p,1)-r1;
+	r4=board[num].countDis2(p,2)-r2;
 }
 
 /*
@@ -383,7 +329,7 @@ void getcc(int num, int pos, int &r0, int &r1, int &r2, int &r3, int &r4)
 2 4 5 5 5 4 2
 1 2 3 3 3 2 1
 */
-void getnumbers(int num)
+void getnumbers(int num, int p)
 {
 	int t;
 	getcc(0); t=r4+r3*6+r2*36+r1*144+r0*576;
@@ -492,9 +438,35 @@ void getnumbers(int num)
 	d7[4]=t;
 }
 
+void valid(int num)
+{
+	getnumbers(num);
+	float sigma=0;
+	for (int i=0;i<4;i++)
+	{
+		sigma+=w1[d1[i]];
+		sigma+=w4[d4[i]];
+		sigma+=w6[d6[i]];
+	}
+	for (int i=0;i<12;i++)
+	{
+		sigma+=w3[d3[i]];
+		sigma+=w5[d5[i]];
+	}
+	for (int i=0;i<8;i++)
+		sigma+=w2[d2[i]];
+	for (int i=0;i<5;i++)
+		sigma+=w7[d7[i]];
+	ssig+=sigma;
+	
+	float mse=fabs(sigma-mval[num]);
+	sse+=mse;
+}
+
 void accuGrad(int num)
 {
 	getnumbers(num);
+	float sigma=0;
 	for (int i=0;i<4;i++)
 	{
 		sigma+=w1[d1[i]];
@@ -514,21 +486,43 @@ void accuGrad(int num)
 	float mse=(sigma-mval[num])*(sigma-mval[num])/2, delta=mval[num]-sigma;
 	sse+=fabs(delta);
 	
+	for (int i=0;i<4;i++)
+	{
+		rw1[d1[i]]+=delta;
+		rw4[d4[i]]+=delta;
+		rw6[d6[i]]+=delta;
+	}
+	for (int i=0;i<12;i++)
+	{
+		rw3[d3[i]]+=delta;
+		rw5[d5[i]]+=delta;
+	}
+	for (int i=0;i<8;i++)
+		rw2[d2[i]]+=delta;
+	for (int i=0;i<5;i++)
+		rw7[d7[i]]+=delta;
 }
 
 void saveArgs()
 {
 	ofstream foutp("trained35_39.txt");
-	foutp<<wmid<<'\n';
-	foutp<<wcol<<'\n';
-	foutp<<wcnt<<'\n';
-	for (int i=0;i<729;i++) foutp<<wcor[i]<<' ';
+	for (int i=0;i<3*4*4*6*6;i++) foutp<<w1[i]<<' ';
 	foutp<<'\n';
-	for (int i=0;i<729;i++) foutp<<wed[i]<<' ';
+	for (int i=0;i<3*6*6*5*5;i++) foutp<<w2[i]<<' ';
 	foutp<<'\n';
-	for (int i=0;i<81;i++) foutp<<wspace[i]<<' ';
+	for (int i=0;i<3*6*6*6*6;i++) foutp<<w3[i]<<' ';
+	foutp<<'\n';
+	for (int i=0;i<3*9*9*4*4;i++) foutp<<w4[i]<<' ';
+	foutp<<'\n';
+	for (int i=0;i<3*9*9*4*4;i++) foutp<<w5[i]<<' ';
+	foutp<<'\n';
+	for (int i=0;i<3*9*9*4*4;i++) foutp<<w6[i]<<' ';
+	foutp<<'\n';
+	for (int i=0;i<3*9*9*4*4;i++) foutp<<w7[i]<<' ';
 	foutp<<'\n';
 }
+
+int mm[7][7];
 
 int main()
 { 
@@ -540,11 +534,12 @@ int main()
 		for (int i=0;i<7;i++)
 			for (int j=0;j<7;j++)
 			{ 
-				fin>>mm[ccnt][i][j];
+				fin>>mm[i][j];
 				if (mcol[ccnt]==1) 
-					if (mm[ccnt][i][j]!=0)
-						mm[ccnt][i][j]=mm[ccnt][i][j]%2+1;
+					if (mm[i][j]!=0)
+						mm[i][j]=mm[i][j]%2+1;
 			} 
+		board[ccnt].set(mm);
 		fin>>mval[ccnt];
 		//if (mcol[ccnt]==1) mval[ccnt]=-mval[ccnt];
 		//mval[ccnt]-=5.4;
@@ -563,7 +558,7 @@ int main()
 		}
 		updateArg();
 	}
-	cout<<"wcol:"<<wcol<<"\nwmid:"<<wmid<<"\n";
+	//cout<<"wcol:"<<wcol<<"\nwmid:"<<wmid<<"\n";
 	float vy_=0;
 	for (int i=ccnt;i<ccnt+1000;i++)
 	
@@ -576,10 +571,10 @@ int main()
 		}
 		vy_+=mval[i];
 	}
-	cout<<"wcnt:"<<wcnt<<'\n';
+	//cout<<"wcnt:"<<wcnt<<'\n';
 	cout<<ssig/1000<<'\n';
 	cout<<vy_/1000<<'\n';
-	saveArgs();
+	//saveArgs();
 	return 0;
 }
 
