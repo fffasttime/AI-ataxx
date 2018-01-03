@@ -272,8 +272,8 @@ Board board[max_size];
 int mcol[max_size],batch_size=200;
 float mval[max_size];
 
-float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4],wcol;
-float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4],rwcol;
+float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4],wcol,wodd,wb;
+float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4],rwcol,rwodd,rwb;
 
 float sse=0;
 
@@ -304,6 +304,8 @@ void updateArg()
 	for (int i=0;i<3*9*9*4*4;i++) 
 		w7[i]+=rw7[i]*ee,rw7[i]=0;
 	wcol+=rwcol; rwcol=0;
+	wodd+=rwodd; rwodd=0;
+	wb+=rwb; rwb=0;
 }
 
 int d1[4], d2[8], d3[12], d4[4], d5[12], d6[4], d7[5];
@@ -504,7 +506,10 @@ void getnumbers(int num)
 void valid(int num)
 {
 	getnumbers(num);
+	int cnt[3]; board[num].cntPiece(cnt);
 	float sigma=0;
+	
+	if (cnt[0]&1) sigma+=wodd;
 	for (int i=0;i<4;i++)
 	{
 		sigma+=w1[d1[i]];
@@ -521,6 +526,8 @@ void valid(int num)
 	for (int i=0;i<5;i++)
 		sigma+=w7[d7[i]];
 		
+	sigma+=wb;
+	if (mcol[num]==1) sigma+=wcol;
 	if (mcol[num]==1) sigma+=wcol;
 	
 	ssig+=sigma;
@@ -533,7 +540,9 @@ void accuGrad(int num)
 {
 	//board[num].print();
 	getnumbers(num);
+	int cnt[3]; board[num].cntPiece(cnt);
 	float sigma=0;
+	
 	for (int i=0;i<4;i++)
 	{
 		sigma+=w1[d1[i]];
@@ -550,6 +559,8 @@ void accuGrad(int num)
 	for (int i=0;i<5;i++)
 		sigma+=w7[d7[i]];
 		
+	sigma+=wb;
+	if (cnt[0]&1) sigma+=wodd;
 	if (mcol[num]==1) sigma+=wcol;
 	
 	float mse=(sigma-mval[num])*(sigma-mval[num])/2, delta=mval[num]-sigma;
@@ -570,8 +581,10 @@ void accuGrad(int num)
 		rw2[d2[i]]+=delta;
 	for (int i=0;i<5;i++)
 		rw7[d7[i]]+=delta;
-		
-	if (mcol[num]==1) rwcol+=delta/100;
+	
+	rwb+=delta/400;	
+	if (cnt[0]&1) wodd+=delta/200;
+	if (mcol[num]==1) rwcol+=delta/200;
 	/*
 	if (fabs(rw1[1038]+90.7)<0.1)
 	{
@@ -583,7 +596,8 @@ void accuGrad(int num)
 
 void saveArgs()
 {
-	ofstream foutp("trained2_4.txt");
+	ofstream foutp("trained30_34.txt");
+	foutp<<wcol<<'\n';
 	for (int i=0;i<3*4*4*6*6;i++) foutp<<w1[i]<<' ';
 	foutp<<'\n';
 	for (int i=0;i<3*6*6*5*5;i++) foutp<<w2[i]<<' ';
@@ -605,7 +619,7 @@ int mm[7][7];
 int main()
 { 
 	initMask();
-	ifstream fin("ataxxdata30_34.txt");
+	ifstream fin("ataxxdata2_4_ne.txt");
 	int col;
 	while (fin>>col)
 	{
@@ -621,7 +635,7 @@ int main()
 		board[ccnt].clear();
 		board[ccnt].set(mm);
 		fin>>mval[ccnt];
-		if (mcol[ccnt]==1) mval[ccnt]=-mval[ccnt];
+		//if (mcol[ccnt]==1) mval[ccnt]=-mval[ccnt];
 		//mval[ccnt]-=5.4;
 		ccnt++;
 	}
@@ -650,7 +664,8 @@ int main()
 		}
 		vy_+=mval[i];
 	}
-	//cout<<"wcnt:"<<wcnt<<'\n';
+	cout<<"wcol:"<<wcol<<'\n';
+	cout<<"wodd:"<<wodd<<'\n';
 	cout<<ssig/1000<<'\n';
 	cout<<vy_/1000<<'\n';
 	//saveArgs();
