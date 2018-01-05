@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cmath>
 #include <queue>
+#include <algorithm>
 using namespace std;
 
 #define M_SIZE 7
@@ -272,8 +273,8 @@ Board board[max_size];
 int mcol[max_size],batch_size=200;
 float mval[max_size];
 
-float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4],wcol,wodd,wb;
-float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4],rwcol,rwodd,rwb;
+float w1[3*4*4*6*6], w2[3*6*6*5*5], w3[3*6*6*6*6],w4[3*9*9*4*4], w5[3*9*9*4*4], w6[3*9*9*4*4], w7[3*9*9*4*4],wcol,wodd,wb,wcnt;
+float rw1[3*4*4*6*6], rw2[3*6*6*5*5], rw3[3*6*6*6*6],rw4[3*9*9*4*4], rw5[3*9*9*4*4], rw6[3*9*9*4*4], rw7[3*9*9*4*4],rwcol,rwodd,rwb,rwcnt;
 
 float sse=0;
 
@@ -303,9 +304,10 @@ void updateArg()
 		w6[i]+=rw6[i]*ee,rw6[i]=0;
 	for (int i=0;i<3*9*9*4*4;i++) 
 		w7[i]+=rw7[i]*ee,rw7[i]=0;
-	wcol+=rwcol; rwcol=0;
-	wodd+=rwodd; rwodd=0;
-	wb+=rwb; rwb=0;
+	wcol+=rwcol*ee; rwcol=0;
+	wodd+=rwodd*ee; rwodd=0;
+	wcnt+=rwcnt*ee; rwcnt=0;
+	wb+=rwb*ee; rwb=0;
 }
 
 int d1[4], d2[8], d3[12], d4[4], d5[12], d6[4], d7[5];
@@ -509,7 +511,6 @@ void valid(int num)
 	int cnt[3]; board[num].cntPiece(cnt);
 	float sigma=0;
 	
-	if (cnt[0]&1) sigma+=wodd;
 	for (int i=0;i<4;i++)
 	{
 		sigma+=w1[d1[i]];
@@ -527,7 +528,8 @@ void valid(int num)
 		sigma+=w7[d7[i]];
 		
 	sigma+=wb;
-	if (mcol[num]==1) sigma+=wcol;
+	sigma+=(cnt[1]-cnt[2])*wcnt;
+	if (cnt[0]&1) sigma+=wodd;
 	if (mcol[num]==1) sigma+=wcol;
 	
 	ssig+=sigma;
@@ -560,6 +562,7 @@ void accuGrad(int num)
 		sigma+=w7[d7[i]];
 		
 	sigma+=wb;
+	sigma+=(cnt[1]-cnt[2])*wcnt;
 	if (cnt[0]&1) sigma+=wodd;
 	if (mcol[num]==1) sigma+=wcol;
 	
@@ -582,9 +585,10 @@ void accuGrad(int num)
 	for (int i=0;i<5;i++)
 		rw7[d7[i]]+=delta;
 	
-	rwb+=delta/400;	
-	if (cnt[0]&1) wodd+=delta/200;
-	if (mcol[num]==1) rwcol+=delta/200;
+	rwb+=delta/16;
+	//rwcnt+=delta/64;
+	if (cnt[0]&1) wodd+=delta/8;
+	//if (mcol[num]==1) rwcol+=delta/8;
 	/*
 	if (fabs(rw1[1038]+90.7)<0.1)
 	{
@@ -596,7 +600,7 @@ void accuGrad(int num)
 
 void saveArgs()
 {
-	ofstream foutp("trained30_34.txt");
+	ofstream foutp("trained2_4.txt");
 	foutp<<wcol<<'\n';
 	for (int i=0;i<3*4*4*6*6;i++) foutp<<w1[i]<<' ';
 	foutp<<'\n';
@@ -616,10 +620,21 @@ void saveArgs()
 
 int mm[7][7];
 
+void shuffle()
+{
+	for (int i=0;i<ccnt;i++)
+	{
+		int rd=rand()*32768+rand(); rd%=ccnt;
+		swap(board[i],board[rd]);
+		swap(mval[i],mval[rd]);
+		//swap col	
+	}
+}
+
 int main()
 { 
 	initMask();
-	ifstream fin("ataxxdata2_4_ne.txt");
+	ifstream fin("ataxxdata1_2.txt");
 	int col;
 	while (fin>>col)
 	{
@@ -640,7 +655,7 @@ int main()
 		ccnt++;
 	}
 	cout<<ccnt<<" board loaded\n";
-	ccnt=60000;
+	ccnt=40000;
 	for (int i=0;i<40000;i++) 
 	{
 		for (int j=0;j<batch_size;j++)
@@ -664,8 +679,10 @@ int main()
 		}
 		vy_+=mval[i];
 	}
+	cout<<"wcnt:"<<wcnt<<'\n';
 	cout<<"wcol:"<<wcol<<'\n';
 	cout<<"wodd:"<<wodd<<'\n';
+	cout<<"wb:"<<wb<<'\n';
 	cout<<ssig/1000<<'\n';
 	cout<<vy_/1000<<'\n';
 	//saveArgs();
