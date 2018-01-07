@@ -283,7 +283,7 @@ struct Board
 	}
 };
 
-//rx beta
+//bzzd pre
 namespace AI
 {
 typedef double Val;
@@ -376,7 +376,7 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 		if (board.canMove(to, col))
 		{
 			if (maxe>1 && ecnt[col][to] == 0) continue;
-			if (cut && maxe>2 && ecnt[col][to] == 1 && ecnt[colf][to]<4) continue;
+			if (cut && maxe>2 && ecnt[col][to] == 1 && ecnt[colf][to]<4 && cnt[0]>2) continue;
 			if (ecnt[colf][to])
 			{
 				Val te = 0;
@@ -384,8 +384,8 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 				else te = ecnt[col][to] - maxk*0.5;
 				tv[int(te * 2 + 10 + 0.01)].push_back({ to,49,0 });
 			}
-			if (ecnt[col][to] == 0 || (ecnt[col][to]<maxe - 2)) continue;
-			if (cut && (ecnt[col][to]<maxe - 1)) continue;
+			if (ecnt[col][to] == 0 || (ecnt[col][to]<maxe - 2) && cnt[0]>3) continue;
+			if (cut && (ecnt[col][to]<maxe - 1) && cnt[0]>3) continue;
 			int fr;
 			for (ull jfr = board.createJump(to, col); jfr; jfr ^= 1ull << fr)
 			{
@@ -394,8 +394,8 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 				Board tboard = board;
 				tboard.setPiece(to, fr, col);
 				int cr = tboard.countFlips(fr, col), cc = tboard.countFlips(fr, colf);
-				if (cc>1 && cr<4 && (ecnt[col][to]<maxe)) continue;
-				if (cr && cr<3 && cc>2 && (ecnt[col][to]<maxe)) continue;
+				if (cc>1 && cr<4 && (ecnt[col][to]<maxe) && cnt[0]>2) continue;
+				if (cr && cr<3 && cc>2 && (ecnt[col][to]<maxe) && cnt[0]>2) continue;
 				Val te = 0;
 				if (cr && cc>maxk) te = ecnt[col][to] - cc*0.5;
 				else if (ecnt[colf][to] == maxk) te = ecnt[col][to] - max2k*0.5;
@@ -593,7 +593,7 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 		{
 			to = first0(empty);
 			int te = board.countFlips(to, col);
-			if (te == 0 || te<maxe - (cnt[0]<7)) continue;
+			if (te == 0 || te<maxe - (cnt[0]<8) - (cnt[0]<4)) continue;
 			int fr;
 			for (ull jfr = board.createJump(to, col); jfr; jfr ^= 1ull << fr)
 			{
