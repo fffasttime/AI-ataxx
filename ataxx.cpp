@@ -283,7 +283,7 @@ struct Board
 	}
 };
 
-//bzzd pre
+//bzzd alpha
 namespace AI
 {
 typedef double Val;
@@ -434,13 +434,14 @@ void loadArgs(string filename)
 //return one section
 int getTnum(int remain)
 {
-	if (remain>=30) return 0;
-	else if (remain>=25) return 1;
-	else if (remain>=20) return 2;
-	else if (remain>=15) return 3;
-	else if (remain>=10) return 4;
-	else if (remain>=5) return 5;
-	return 6;
+	if (remain>=35) return 0; else 
+	if (remain>=30) return 1;
+	else if (remain>=25) return 2;
+	else if (remain>=20) return 3;
+	else if (remain>=15) return 4;
+	else if (remain>=10) return 5;
+	else if (remain>=5) return 6;
+	return 7;
 }
 
 int boardarr[7][7];
@@ -513,8 +514,7 @@ Val edgeEval(Board &board, int col)
 
 //faster minimax search
 Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
-{
-	leaf_count++;
+{leaf_count++;
 	if (outtime) return 100;
 	if (leaf_count % 2000 == 0 && clock() - t0>CLOCKS_PER_SEC * MAX_TIME)
 	{
@@ -523,11 +523,11 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 	}
 	if (deep == maxdeep)
 	{
-		if ((cnt_start[0]>=36 || cnt_start[0]<=10))
+		if ((cnt_start[0]>=40 || cnt_start[0]<=5))
 			return eval(board, col)*1.0 + jumped;
 		int cnt[3];
 		board.cntPiece(cnt);
-		if (cnt[0]<35 && cnt[0]>=2) return evalReg(board, col);
+		if (cnt[0]<35 && cnt[0]>=1) return evalReg(board, col) + jumped*0.6;
 		return eval(board, col)*1.0 + jumped;
 	}
 	Val lyval = 0;
@@ -535,7 +535,7 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 	board.cntPiece(cnt);
 	if (deep == maxdeep - 1)
 	{
-		if ((cnt_start[0]>=36 || cnt_start[0]<=10))
+		if ((cnt_start[0]>=40 || cnt_start[0]<=5))
 		{
 			lyval += eval(board, col) * 0.6 + jumped*0.5;
 		}
@@ -543,15 +543,15 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 		{
 			int cnt[3];
 			board.cntPiece(cnt);
-			if (cnt[0]<35 && cnt[0]>=2) 
-				lyval += evalReg(board, col)*0.6;
+			if (cnt[0]<40 && cnt[0]>=1) 
+				lyval += evalReg(board, col)*0.6 + jumped*0.3;
 			else
 			{
 				lyval += eval(board, col) * 0.6 + jumped*0.5;
 			}
 		}
 		if (cnt[0]>9 && cnt[0]<42)
-			lyval += edgeEval(board, col);
+			lyval += edgeEval(board, col)*0.5;
 	}
 	if (cnt[1]==0 || cnt[2]==0) return eval(board, col)*1.0 + jumped;
 	int maxe = 0;
