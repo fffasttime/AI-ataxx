@@ -375,7 +375,7 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 		to = first0(empty);
 		if (board.canMove(to, col))
 		{
-			if (maxe>1 && ecnt[col][to] == 0) continue;
+			if (maxe>1 && ecnt[col][to] == 0 && ecnt[colf][to]<8 && cnt[0]>2) continue;
 			if (cut && maxe>2 && ecnt[col][to] == 1 && ecnt[colf][to]<4 && cnt[0]>2) continue;
 			if (ecnt[colf][to])
 			{
@@ -384,7 +384,7 @@ template <bool cut> void geneBranch(Board &board, int col, vector<Move> &v)
 				else te = ecnt[col][to] - maxk*0.5;
 				tv[int(te * 2 + 10 + 0.01)].push_back({ to,49,0 });
 			}
-			if (ecnt[col][to] == 0 || (ecnt[col][to]<maxe - 2) && cnt[0]>3) continue;
+			if (ecnt[col][to] == 0 && ecnt[colf][to]<8 || (ecnt[col][to]<maxe - 2) && cnt[0]>3) continue;
 			if (cut && (ecnt[col][to]<maxe - 1) && cnt[0]>3) continue;
 			int fr;
 			for (ull jfr = board.createJump(to, col); jfr; jfr ^= 1ull << fr)
@@ -527,7 +527,7 @@ Val minimax1(Board &board, int col, Val alpha, Val beta, int deep, Val jumped)
 			return eval(board, col)*1.0 + jumped;
 		int cnt[3];
 		board.cntPiece(cnt);
-		if (cnt[0]<35 && cnt[0]>=1) return evalReg(board, col) + jumped*0.6;
+		if (cnt[0]<40 && cnt[0]>=1) return evalReg(board, col) + jumped*0.6;
 		return eval(board, col)*1.0 + jumped;
 	}
 	Val lyval = 0;
